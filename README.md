@@ -418,3 +418,230 @@ a(b);
 ```
 
 Now, the function ```a``` remain pure, even if it's using an impure function, since the impure function is injected into it.
+
+# 5. Programming Declaratively - A Better Style
+
+## Reducing an array to a value
+
+> In usual FP parlance, we speak of **folding** operations: ```reduce()``` is **foldl** ( for fold left ) or just plain **fold** and ```reduceRight()``` is correspondingly known as **foldr**. In category theory terms, both operaitons are **catamorphisms**: the reduction of all the values in a *container* down to a single result.
+
+The ```reduce()``` function iterates through the array and applies a function to each element and the accumulator. In the end, this reduces the whole array to one single value.
+
+These are the reasons why you should use ```reduce()```/```reduceRight``` over hand-coded loops:
+
+* All the aspects of loop control are automatically taken care of, so you don't even have the possibility of, say, and *off-by-one* mistake.
+* The initialization and handling of the result values are also done implicitly.
+* Unless you work really hard at being impure and modifying the original array, your code will be side effect free.
+
+In order to reduce an an array you must provide a **dyadic**/**binary** function which is a function with two parameters and you can also provide an initial value.
+
+It's always better to provide a starting value since, for example if an array is empty, you will receive an error.
+
+```reduce``` allows you to work more declaratively, focusing on *what* rather than *how*.
+
+### Folding left and right
+
+The complementary ```reduceRight()``` method works just as ```reduce()``` does but it works from right to left.
+
+## Applying an operation - map
+
+> In mathematics, a **map** is a transfomration of elements from a **domain** into elements of a **codomain**. For example, you might transforms numbers into strings or strings into numbers, but also numbers to numbers, or strings to strings: the important point is that you have a way to transform an element of the first **kind** or **domain** ( think **type**, if it helps ) into an element of the second kind, or **codomain**. In our case, this will mean taking the elements of an array and applying a function to each of them to produce a new arrayl. In more computer-like terms, the map function transforms an array of inputs into an array of outputs.
+
+The ```map()``` function doesn't modify the original array and only applies a given function to every single element ( excluding ```undefined``` elements ) and returns a new array with the results.
+
+Here are the advantages of using ```map()``` over a normal loop:
+
+* First, you don't have to write any loops, so that's one less possible source of bugs.
+* Second, you don't even have to access the original array or the index position, even though they are there for you to use if you relaly need them.
+* Lastly, a new array is produced, so your code is pure ( though, of course, if you really want to produce side effects, you can! )
+
+There are only two caveats when using this:
+
+* Always return something from your mapping function. If you forget this, then you'll just produce an ```undefined```-filled array, because JavaScript always provides a default ```return undefined``` for all functions.
+* If the input array elements are objects or arrays and you include them in the output array, then JavaScript will still allow the original elements to be accessed.
+
+## Flattening an array
+
+The ```flat()``` method creats a new array, concatenating all elements of its subarrays to the desired level, which is, by default, 1:
+
+```JavaScript
+const a = [
+    [1, 2],
+    [3, 4, [5, 6, 7]],
+    8,
+    [[[9, 10]]]
+];
+
+console.log(a);
+console.log(a.flat());
+console.log(a.flat(2));
+console.log(a.flat(Infinity));
+```
+
+## Mapping and flattening - ```flatMap()```
+
+The function ```flatMap()``` is a combination between ```map()``` and ```flat()```. It first applies the ```map()``` function on the array and then the ```flat()``` function.
+
+## Filtering an array
+
+The ```filter()``` takes in a function and applies that function to each element and only keeps the elements for which the output of the function was true.
+
+> The ```filter()``` method lets you inspect each element of an array int he same fashion as ```map()```. The difference is that instead of producing a new element, the result of your function determines wheter the input value willbe kept in the output ( if the function returned ```true``` ) or if it will be skipped ( if the function returned ```false``` ). Also similar to ```map()```, ```filter()``` doesn't alter the original array, but rather returns a new array with the chosen items.
+
+There are a couple of things to remember when filtering an array:
+
+* **Always return something from your predicate**: If you forget to include a ```return```, the function will implicitly return ```undefined``` and since that's a *falsy* value, the output will be an empty array.
+* **The copy that is amde is shallow**: If hte input array elements are objects or arrays, then the original elements will still be accessible.
+
+## Searching an array
+
+You can search elements in an array using:
+
+* ```find()``` searches through the array and returns the value of the first element that satisfies a given condition, or ```undefined``` if no such element is found
+* ```findIndex()``` performs a similar task, but instead of returning an element, it returns the index of the first element in the array that satisfies the condition, or -1 of none were found
+
+### A special serach case
+
+```NaN``` is the only value that isn't equal to itself:
+
+```JavaScript
+[1, 2, NaN, 4].findIndex(x => x === NaN); // -1
+[1, 2, NaN, 4].findIndex(x => isNaN(x)); // 2 
+```
+
+## Higher-level predicates - some, every
+
+```every()``` returns ```true``` if and only if *every* element in the array satisfies a given predicate.
+```some()```, which is ```true``` if at least *one* element in the array satisfies the predicate.
+
+## Async implementations
+
+The following are async implementations of the higher-order functions we've seen so far:
+
+### Async ```forEach```
+
+```JavaScript
+const fakeAPI = (delay, value) => new Promise(resolve => setTimeout(() => resolve(value), delay));
+
+const useResult = x => console.log(new Date(), x); 
+
+const forEachAsync = (arr, fn) => 
+    arr.reduce(
+        (promise, value) => promise.then(() => fn(value))
+    );
+
+(
+    async () => {
+        console.log("START FOREACH VIA REDUCE");
+
+        await forEachAsync([1, 2, 3, 4], async n => {
+            const x = await fakeAPI(n * 1000, n);
+            userResult(x);
+        })
+
+        console.log("END FOREACH VIA REDUCE");
+    }
+)();
+```
+
+### Async ```filter```
+
+```JavaScript
+const fakeAPI = (delay, value) => new Promise(resolve => setTimeout(() => resolve(value), delay));
+
+const useResult = x => console.log(new Date(), x); 
+
+const mapAsync = (arr, fn) => Promise.all(arr.map(fn));
+
+const filterAsync = (arr, fn) =>
+    mapAsync(arr, fn).then(arr2 => arr.filter((value, index) => Boolean(arr2[index])));
+
+const fakeFilter = value =>
+    new Promise(resolve =>
+        setTimeout(() => resolve(value % 2 === 0), 1000)
+);
+
+(
+    async () => {
+        console.log("START FILTER");
+
+        const filtered = await filterAsync([1, 2, 3, 4], async n => {
+            const x = await fakeFilter(n);
+            return x;
+        });
+
+        useResult(filtered);
+
+        console.log("END FILTER");
+    }
+)();
+```
+
+### Async ```map```
+
+```JavaScript
+const fakeAPI = (delay, value) => new Promise(resolve => setTimeout(() => resolve(value), delay));
+
+const useResult = x => console.log(new Date(), x); 
+
+const mapAsync = (arr, fn) => Promise.all(arr.map(fn));
+
+(
+    async () => {
+        console.log("START MAP");
+
+        const mapped = await mapAsync([1, 2, 3, 4], async n => {
+            const x = await fakeAPI(n * 1000, n);
+            return x;
+        })
+
+        useResult(mapped);
+
+        console.log("END MAP");
+    }
+)();
+```
+
+### Async ```reduce```
+
+```JavaScript
+const fakeAPI = (delay, value) => new Promise(resolve => setTimeout(() => resolve(value), delay));
+
+const useResult = x => console.log(new Date(), x); 
+
+const forEachAsync = (arr, fn) => 
+    arr.reduce(
+        (promise, value) => promise.then(() => fn(value))
+    );
+
+const reduceAsync = (arr, fn, init) =>
+    Promise.resolve(init).then(
+        accum => 
+            forEachAsync(arr, async (value, index) => {
+                accum = await fn(accum, value, index);
+            }).then(() => accum)
+    );
+
+const fakeSum = (value1, value2) => 
+    new Promise(resolve => setTimeout(() => resolve(value1 + value2), 1000));
+
+(
+    async () => {
+        console.log("START REDUCE");
+
+        const summed = await reduceAsync(
+            [1, 2, 3, 4],
+            async (_accum, n) => {
+                const accum = await _accum;
+                const x = await fakeSum(accum, n);
+                useResult(`accumulator = ${accum} value = ${x}`);
+                return x;
+            },
+            0
+        );
+
+        useResult(summed);
+        console.log("END REDUCE");
+    }
+)();
+```
