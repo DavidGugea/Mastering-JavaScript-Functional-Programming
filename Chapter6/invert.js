@@ -1,0 +1,1 @@
+const invert = fn => (...args) => -fn(...args);
