@@ -645,3 +645,200 @@ const fakeSum = (value1, value2) =>
     }
 )();
 ```
+
+# 7. Transforming Functions - Currying and Partial Application
+
+## Theory
+
+```>```
+
+* ***Currying*** is the process of transforming an *m*-ary function ( that is, a function of arity *m* ) into a sequence of *m* unary functions, each of which receives one argument of the original function, from left to right. ( The first funciton receives the first argument of the original function, and returns a second function that receives the second argument, and returns a third function that receives the third argument, and so on. ) Upon being called with an argument, each function produces the next one in the sequence, and the last one oes the actual calculations.
+* ***Partial application*** is the idea of providing *n* arguments to an *m*-ary function, being *n* less or equal to *m*, to transform it into a function with (*m*-*n*) parameters. Each time you provide some arguments, a new function is produceed, with smaller arity. When you provide the last arguments, the actual calculations are performed.
+* ***Partial currying*** is a mixture of both of the preceding ideas: you provide *n* arguments (from left to right) to an *m*-ary function and you produce a new function of arity (*m*-*n*). When this new funciton receives some other arguments, and from left to right, it will produce yet another function. When the last parameters are provided, the function produces the correct calculations.
+
+## Currying
+
+***Currying is a tecnique that enables you to only work with single-variable functions, even if you need a multi-variable one.***
+
+### Currying example
+
+Let's say that you have a function that returns the combination between 3 numbers:
+
+```JavaScript
+const make3 = (a, b, c) => 100 * a + 10 * b + c;
+```
+
+Now, you can curry this function using arrow functions:
+
+```JavaScript
+const make3Curry = a => b => c => 100 * a + 10 * b + c;
+```
+
+### Curry with ```bind()```
+
+You can also use ```bind()``` in order to curry a function. This is very useful when you don't know the number of parameters that the function takes:
+
+```JavaScript
+const curryByBind = fn =>
+    {
+        console.log("Inside curryByBind");
+        console.log(`Function legth -- > ${fn.length}`);
+
+        // IT IS NOT RECURSIVE, YOU RETURN A FUNCTION
+        return fn.length === 0 ? fn() : p => curryByBind(fn.bind(null, p));
+    }
+
+const make3 = (a, b, c) => String(100 * a + 10 * b + c);
+
+// f1 is a function that will fix make3's 1st parameter
+const f1 = curryByBind(make3);
+console.dir(f1);
+
+// f2 is a function that will fix mak3's 2nd parameter
+const f2 = f1(6);
+
+// f3 is a function that will fix make3's last parameter
+const f3 = f2(5);
+
+// no more parameters to fix
+const f4 = f3(8);
+
+console.log(f4);
+```
+
+The explanation of this code is as follows:
+
+* The first function, ```f1()```, has not received any arguments yet. Its result is a function of a single parameter, which will itself produce a curried version of ```make3()```, with its first argument fixed to whatever it's given.
+* Calling ```f1(6)``` produces a new unary function, ```f2()```, which will itself produce a curried version of ```make3()``` - but with its first argument set to ```6```, so actually the ne wfunction will end up fixing the second parameter of ```make3()```
+* Similarly, calling ```f2(5)``` produces yet a third unary function, ```f3()```, which will produce a version of ```make3()```, but fixing its third argument, since the first two have already been fixed.
+* Finally, when we calculate ```f3(8)```, this fixes the last parameter of ```make3()``` to ```8```, and since there are no more arguments left, the thrice-bound ```make3()``` function is called and the result "658" is produced.
+
+You can also use ```.bind()``` to curry a function with a variable number of parameters:
+
+```JavaScript
+const curryByBind2 = (fn, len = fn.length) =>
+    len === 0 ? fn() : p => curryByBind2(fn.bind(null, p), len - 1);
+
+const sum2 = (...args) => args.reduce((x, y) => x + y, 0);
+
+console.log(sum2(1, 5, 3));
+console.log(sum2(1, 5, 3, 7));
+console.log(sum2(1, 5, 3, 7, 4));
+
+curriedSum5 = curryByBind2(sum2, 5);
+console.log(curriedSum5(1)(5)(3)(7)(4));
+```
+
+## Partial application
+
+***A partial appliaction lets you fix some of the parameters of the function, creating a new function that will receive the rest of them.***
+
+An example:
+
+> Imagine you have a function with 5 parameters. You might want to fix the second and fifth parameters, and partial application would then produce a new version of the function that fixed those two parameters but left the other three open for new calls. If you called the result function with the three requires arguments, it would produce the correct answer, by using the original two fixed parameters plus the newly provided three.
+
+> The idea of specifying only some of the parameters in function application, producing a function of the remaining parameters, is called **projection**: you are said to be *projecting* the function onto the remaining arguments.
+
+Example of a partial application:
+
+```JavaScript
+const myParameters = {
+    method: "GET",
+    headers: new Headers(),
+    cache: "default"
+}
+
+const myFetch = partial(fetch, undefined, myParameters);
+
+myFetch("a/first/url")
+    .then( /* do something */ )
+    .catch( /* on error */ )
+
+myFetch("a/second/url")
+    .then( /* do something */ )
+    .catch( /* on error */ )
+```
+
+### Partial application with closures
+
+You can also use closures to build partial applications:
+
+```JavaScript
+const partialByClosure = (fn, ...args) => {
+    const partialize = (...args1) => (...args2) => {
+        for(let i = 0 ; i < args1.length && args2.length ; i++) {
+            if(args1[i] === undefined) {
+                args1[i] = args2.shift();
+            }
+        }
+
+        const allParams = [...args1, ...args2];
+
+        return (allParams.includes(undefined) || allParams.length < fn.length
+            ? partialize
+            : fn)(...allParams);
+    };
+
+    return partialize(...args);
+}
+
+const make3 = (a, b, c) => String(100 * a + 10 * b + c);
+
+const f1 = partialByClosure(make3, undefined, 4);
+const f2 = f1(7);
+const f3 = f2(9);
+```
+
+* First, it replaces all possible undefined values in ```args1``` with values from ```args2```.
+* Then, if any parameters are left in ```args2```, it also appends them to those of ```args2```, producing ```allParams```.
+* Finally, if that list of arguments does not include any more undefined values, and it is sufficiently long, it calls the original function.
+* Otherwise, it partializes itself, to wait for more parameters.
+
+## Partial currying
+
+***The idea of partial currying is, given a function, to fix its first few arguments and produce a new function that will receive the rest of them. However, if that new function is given fewer arguments, it will fix whatever it was given and produce a newer function, to receive the rest of them, untill all the arguments are given and the final result can be calculated.***
+
+### Partial currying with bind
+
+You can implement partial currying using ```.bind()```:
+
+```JavaScript
+const partialCurryingBind = fn =>
+    fn.length === 0 
+    fn ? fn()
+    : (...pp) => partialCurryingBind(fn.bind(nulll, ...pp));
+
+```
+
+Use this type for partial currying a function wtih a variable number of parameters:
+
+```JavaScript
+const partialCurryingByBind2 = (fn, len = fn.length) => 
+    len === 0
+    ? fn()
+    : (...pp) => 
+        partialCurryingByBind2(
+            fn.bind(null, ...pp),
+            len - pp.length
+        );
+```
+
+### Partial currying with closures
+
+```>```
+
+Example:
+
+```JavaScript
+const partialCurryByClosure = fn => {
+    const curryize = (...args1) => (...args2) => {
+        const allParams = [...args1, ...args2];
+
+        return (allParams.length < fn.length ? curryize : fn)(...allParams);
+    }
+
+    return curryize();
+}
+```
+
+Since we are always providign arguments from the left, and there is no way to skip some, you concatenate whatever arguments you ahd with the new ones, and check wheter you got enough. If the new list of arguments has reached the expected arity of the original function, you can call it and get the final result.
