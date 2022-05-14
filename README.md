@@ -646,6 +646,22 @@ const fakeSum = (value1, value2) =>
 )();
 ```
 
+# 6. Producing Functions - Higher-Order Functions
+
+We can roughly classify the kinds of custom higher-order functions like this:
+
+* **Wrapped functions:** These keep their original functionality while adding some kind of new feature ( e.g. : *logging*, *timing*, *memoization* )
+* **Altered functions:** These differ in some key points from their original versions
+* **Other productions:** These provide new operations, turn functions into promises, allow enhanced search functions, or decouple methods from objects so that we can use them in other contexts as if they were common functions.
+
+## Timing functions
+
+> If you plan to optimize your code, remember the following three rules: *Don't do it*, *Don't do it yet* and *Don't do it without measuring*. Much bad code arises from early atempts at optimization, so don't start by trying to write optimal code, don't try to optimize until you recognize the need for it, and don't do it haphazardly, without trying to determine the reasons for the slowdonw by measuring all the parts of your application.o
+
+## Arity of functions
+
+> The number of parameters of a function is called the *arity* of the function, or its *valence*. You may speak in three different ways: you can say a function has arity 1, 2, 3, and so on; you can say that a function is unary, binary, ternay and so on; or you can say it's monadic, dyadic, triadic, and so on.
+
 # 7. Transforming Functions - Currying and Partial Application
 
 ## Theory
