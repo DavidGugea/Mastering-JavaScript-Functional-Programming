@@ -858,3 +858,238 @@ const partialCurryByClosure = fn => {
 ```
 
 Since we are always providign arguments from the left, and there is no way to skip some, you concatenate whatever arguments you ahd with the new ones, and check wheter you got enough. If the new list of arguments has reached the expected arity of the original function, you can call it and get the final result.
+
+# 8. Connecting Functions - Pipelining and Composition
+
+Here are the following topics that will be discussed in this chapter:
+
+* **Pipelining:** A way to join functions together in a similar way to Unix/Linux pipes.
+* **Chaining:** This may be considered a variant of pipelining, but is restricted to objects.
+* **Composing:** This is a classic operation with its origins in basic computer theory.
+* **Transducing:** An optimized way to compose map/filter/reduce operations.
+
+## Pipelining
+
+> Pipelining and composition are techniques that are used to set up functions so that they work in sequence so that the output from a function becomes the input for the next function.
+
+This is how pipelining looks like:
+
+```JavaScript
+function pipeline = f, g, h => value => h(g(f(value)))
+```
+
+This is how you can build a higher-order pipelining function that builds a pipeline between two functions:
+
+```JavaScript
+const pipeTwo = (f, g) => (...args) => g(f(...args));
+```
+
+**With pipelining, you are evaluating the first function and its output becomes the input of the second function and the output of the second function becomes the input of the third function, and so on.**
+
+***This is how you build a higher-order pipelining functions for a variable amount of functions:***
+
+```JavaScript
+const pipeline = (...fns) => (...args) => {
+    let result = fns[0](...args);
+
+    for(let i = 1 ; i < fns.length ; i++) {
+        result = fns[i](result);
+    }
+
+    return result;
+}
+```
+
+or, using ```reduce```:
+
+```JavaScript
+const pipeline = (...fns) => value =>
+    fns.reduce((accumulator, currentFn) => currentFn(accumulator), value);
+```
+
+An example of how to use the pipeline:
+
+```JavaScript
+const pipeline = (...fns) => value =>
+    fns.reduce((accumulator, currentFn) => currentFn(accumulator), value);
+
+const add5 = x => x + 5;
+const minus1 = x => x - 1;
+const multiplyWith5 = x => x * 5;
+
+const test = pipeline(
+    add5,
+    minus1,
+    multiplyWith5
+); // ( x + 5 - 1 ) * 5
+
+console.log(test(6)); // 50
+```
+
+### Debugging pipelines
+
+There are two common debugging choices when it comes to pipelines:
+
+1. One solution that comes from the Unix world > the ```tee```.
+2. Using wrappers to provide some logs.
+
+#### Using ```tee```
+
+> The first solution implies adding a function to the pipeline, which will just log its input.
+
+This is you can write such a function and simply add it to the sequence of functions that will be pipelined:
+
+```JavaScript
+const tee = arg => {
+    console.log(arg);
+    return arg;
+}
+```
+
+An even better thing to do would be to give the ```tee``` function the opportuinty to receive different kinds of loggers:
+
+```JavaScript
+const tee = (arg, logger=console.log) {
+    logger(arg);
+    return arg;
+}
+```
+
+In the example above however, you should be careful with the ```console.log``` since you might have a binding problem. The best solution to go with in order to be safe would be to bind it to the ```console``` API:
+
+```JavaScript
+const tee = (arg, logger=console.log.bind(console)) {
+    logger(arg);
+    return arg;
+}
+```
+
+If you want to you can write a more enhanced ```tee``` function that can send the logging data to a remote service or debug the information, etc. This is called tapping into the flow of the pipeline. YOu could write something like this, for example:
+
+```JavaScript
+const tap = fn => x => (fn(x), x)
+```
+
+This wouldn't mess with the receiving args but it wuold pass the args to the ```fn``` function given to the ```tap``` function.
+
+#### Using a loggin wrapper
+
+The second idea that was mentioned was to wrap the functions into a logging wrapper:
+
+```JavaScript
+pipeline(
+    addLogging(fn1),
+    addLogging(fn2),
+    addLogging(fn3)
+);
+```
+
+## Pointfree style
+
+```>```
+
+When you join functions together, either in pipeline fashion or with composition, as we'll see later in this chapter, you don't need any intermediate variables to hold the results that will become arguments to the next function in line: they are implicit. Similarly, you can write functions without mentioning their parameters; this is called the pointfree style.
+
+Pointfree style is also called *tacit* programming. The term *point* itself means a function parameter, while pointfree refers to not naming those parameters.
+
+## Composing
+
+Composition is basically the reverse order of pipelining:
+
+Pipelining:
+
+```JavaScript
+function pipeline = f, g, h => value => h(g(f(value)))
+```
+
+Composition:
+
+```JavaScript
+function composition = f, g, h => value => f(g(h(value)))
+```
+
+> The concept of composition is simply - a sequence of function calls, in which the output of one function is the input for the next one - but the order is reverse from the one in pipelining. So, if you have a series of functions, from left to right, whne pipelining, the first function of the series th be applied is the leftmost one, buth when you use composition, you stat with the rightmost one.
+> When you define the composition of, say, three function as f, g, h and apply this composition to *x*, this is equivalent to writing *f(g(h(x)))*. It's important to note that, as with pipelining, the arity of the first function to be applied (actually the last one in the list) can be anything, but all the other functions must be unary. Composing is an important tool in FP because it also abstracts implementation details (putting your focus in what you need to accomplish, rather than on the specific details for achieving that), thereby letting you work in a more declarative fashion.
+
+So, as previously mentioned, function composition is the same as function pipelining but with the order of the function reversed. So when we implemented a higher-order function that composes functions, we don't use ```reduce```, we use ```reduceRight```:
+
+```JavaScript
+const compose = (...fns) => value =>
+    fns.reduceRight((accumulator, currentFn) => currentFn(accumulator), value);
+```
+
+In terms of testing and debugging, we can apply the same ideas that we applied to pipelining, however, remember that composition is *reversed*.
+
+## Transducing
+
+```>```
+
+Now, let's consider a performance problem in JavaScript that happens when we're dealing with large arrays and applying several map/filter/reduce operations. If you start with an array and apply such operations, you get the desired result, but many intermediate arrays are created, processsed and discarded - and that causes delays. If you are dealing with short arrays, the extram tiem won't make an impact, but if you are processing larger arrays (as in a big data process, maybe in Node, where you're working with the results of a large database query), then you will havve cause to look for some optimization. We'll do this by learning about a new tool for composing functions: *transducing*.
+
+The problem with most compositions and pipelines is that the processing applies the first transofmraiton to the input array; then, the second transformation is applied to the result array; then the third, and so on. The alternative solutino would be to take the first element of the input array and apply all the transformations in sequence to it. Then, you would need to take the second element of the input array and apply all the transformations to it, then take the third, and so on. In a sort of pseudocode, the difference is between the following schemes:
+
+```
+for each transformation to be applied:
+    for each element in the input list:
+        apply the transformation to the element
+```
+
+With this logic, we go transformatino by transformation, applying it to each list and generating a new one. This will require several intermediate lists to be produced. The alternative is as follows:
+
+```
+for each element in the input list:
+    for each transformation to be applied:
+        apply the transformation to the element
+```
+
+In this variant, we go element by element and apply all the transformations to it in sequence so that we arrive at the final output list without any intermediate ones.
+
+By using those definitions, instead of a seqeunce of different functions, we will be applying the smae operation  (reduce) at each step, and here is the secret - we change the order of evaluation by composing all the transformations so that they can be applied in a singe pass, with no intermediate arrays whatsoever.
+
+Instead of applying a first reduce operations, passings its result to a second, its result to a third, and so on, we will compose all the reducing functions into a single one!
+
+## Demethodizing
+
+A very important thing, that doesn't have anything to do really with this chapter but can still come in handy at any time is the concept of **demethodizing**.
+
+As the name says, you are demethodizing a method, so you are **transforming a method into a normal function**.
+
+This is very helpful for example when you are trying to work with currying/composition/pipelining since you can for example use methods from Strings and Arrays directly withing the code without building a new string or an array.
+You can apply methods that are not made for a specific data types to those specific data types by making them independt of their original prototype.
+
+This one way of writing a demethodizing function:
+
+```JavaScript
+const demethodize = fn => (arg0, ...args) => fn.apply(arg0, args);
+```
+
+The first argument that it takes is the function that you want to demethodize. Then, it returns a function that takes in, as the first argument, the ```this``` arg used for the ```.apply()``` function and then the ```...args``` are used as the actual arguments for the method.
+
+An example:
+
+```JavaScript
+const demethodize = fn => (arg0, ...args) => fn.apply(arg0, args);
+
+const toUpperCase = demethodize(String.prototype.toUpperCase);
+
+console.log(toUpperCase("hello world")); // HELLO WORLD
+```
+
+The function ```toUpperCase``` is now the demethodized version of ```String.prototype.toUpperCase```. 
+The function ```toUpperCase``` now takes in as the first argument the ```this``` arg, which in our case has to be a string since ```String.prototype.toUpperCase``` is internally modifying the string object itself, which is pointed at by the ```this``` operator. If the ```String.prototype.toUpperCase``` function would have needed more arguments, you could have specified them right after the ```this``` arg.
+
+## Comma Operator
+
+Another important thing to know in FP is the comma operator.
+
+MDN ```>```:
+
+The comma operator (,) evaluates each of its operands (from left to right) and returns the value of the last operand. This lets you create a compound expression in which multiple expressions are evaluated, with the compound expression's final value being the value of the rightmost of its member expressions.
+
+It looks like this:
+
+```
+expr1, expr2, expr3...
+```
+
+One or more expressions, the last of which is returned as the value of the compound expression.
