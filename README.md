@@ -1093,3 +1093,186 @@ expr1, expr2, expr3...
 ```
 
 One or more expressions, the last of which is returned as the value of the compound expression.
+
+# 9. Designing Functions - Recursion
+
+> A basic fact of computer science is that whatever you can do with recursion, you can also do with iteration (loops), and vice versa.
+
+## Thinking recursively
+
+```>```
+
+The key to solving problems recursively is assuming that you already have a function that does whatever you need and just calling it normally. If you want to solve a problem by using recursion, you must first have solved it before. On the other hand, if you try to work out in your head how the recursive calls work and attempt to follow th flow in your mind, you'll rpobably just get lost. So what you need to do is the following:
+
+1. Assume you already hav ean appropriate function to solve your problem.
+2. See how the big problem can be solved by sovling one (or more) smaller problems
+3. Solve those problems by using the imagined function from step 1.
+4. Decide what your base cases are. Make sure that they are simple enough that they are sovled directly, without requiring any more calls.
+
+There are three usual methods for solving problems by applying recursion:
+
+* **Decrease and conquer**: solving a problem direclty depends on sovling a single simpler case of itself.
+* **Divide and conquer**: The idea is to try to divide your problem into two or more smaller versions, sovle them recursively, and use these solutions to solve the original problem. Here, you have to solve two or more other problems, instead of only one.
+* **Dynamic programming**: You solve a complex problem by breaking it into a set of somewhat simpler version of the same problem and sovling each in order. A keay idea in this strategy is to store rpeviously found solutions, so that whenever you find yourself needing the solution to a simpler case again you won't directly apply recursion, but rahter use the stores result and avoid unnecessary repeated calcuations.
+
+## Decrease and conquer - searching
+
+```>```
+
+The most usual case of recursion involves just a single, simple case.
+
+To search for an element in an array, you would also use this decrease and conquer strategy. If the array is empty, then obviously the searched-for value isn't there; otherwise, the reuslt is in the array if and only if it's the first element in it, or if it's in the rest of the array.
+
+```JavaScript
+const search = (arr, key) => {
+    if (arr.length === 0) {
+        return false;
+    } else if (arr[0] === key) {
+        return true;
+    } else {
+        return search(arr.slice(1), key);
+    }
+}
+
+const search2 = (arr, key) => 
+    arr.length === 0 ? false : arr[0] === key || search2(arr.slice(1), key);
+
+const search3 = (arr, key) =>
+    arr.length && (arr[0] === key || search3(arr.slice(1), key));
+```
+
+## Divide and conquery - sorting
+
+```>```
+
+We can see an example of divide and conquer in sorting. A way to sort arrays, called *quicksort*, is based upon the following steps:
+
+1. If yo uarray has 0 or 1 elements, do nothing; it's already sorted (this is the base case).
+2. Pick an elemnt of the array (called the **pivot**) and split the rest of the array into two subarrays: the elements smaller than your chosen element and the elements greater than or equal to your chosen element.
+3. Recursively sort each subarray.
+4. Concatenate both sorted reuslts, with the pivot in-between, to produce the sorted verison of the original array.
+
+```JavaScript
+const quicksort = arr => {
+    if (arr.length < 2) {
+        return arr;
+    } else {
+        const pivot = arr[0];
+        const smaller = arr.slice(1).filter(x => x < pivot);
+        const greaterEqual = arr.slice(1).filter(x => x >= pivot);
+        return [...quicksort(smaller), pivot, ...quicksort(greaterEqual)];
+    }
+}
+
+console.log(quicksort([22, 9, 60, 12, 4, 56]));
+```
+
+## Dynamic programming
+
+```>```
+
+The third general strategy, dynamic programming, assumes that you will have to solve many smaller problems, but, instead of using recursion each and every time, it dpeneds on you having stored the previously found solutions... memoization, in other words!
+
+## Recursion Techniques
+
+```>```
+
+Here are a couple of recursion techniques:
+
+* **Tail call optimization**, a technique that sppeds up recursion
+* **Continuation passing style**, an important FP technique that can help with recursion
+* A couple of interestingly named techniques, **trampolines** and **thunks**, which are also common FP tools.
+* **Recursion elimination**
+
+### Tail call optimization
+
+When is a recursive call not a recursive call ? If the recursive call is the very last thing a function wil ldo, then the call could be transformed to a simple jump to the start of the function ewithout needing to create a new stack entry. ( Why ? The stack entry wouldn't be required: after the recursive call is done, the function would have nothing else to do, so ther eis no need to further save any of the elements that have been pushed into the stack upon entering the function.  ) The original stack entry would then no longer be needed and could simply be replaced by a new one, corresponding to the recent call.
+
+These calls are known as **tail calls** and have higher efficiency, not only because of the saved stack space, but also because a jump is quite a bit faster than any alternative. If the brwoser implements this enhancement, then it is using a **tail call optimization (TCO)**.
+
+### Continuation passing style
+
+We can transform recursive calls into tail calls by using a well-known FP concept - **continuations**.
+
+In FP parlance, a continuation is something that represents the state of a process and allows processing to conitnue. The key idea is that, when you call a function, you also provice it with a continuation (in reality, a simpel function) that will be called at return time.
+
+Let's look at a trivial example. Suppose you have a function that returns the time of the day and you want to show this on the console. The usual way to do this could be as follows:
+
+```JavaScript
+function getTime() {
+    return new Date().toTimeString();
+}
+
+console.log(getTime());
+```
+
+If you were doing **continuation passing style (CPS)**, you would pass a continuation to the ```getTime()``` function. Instaed of returning a calculated value, the function would invoke the conitnuation, giving it the value as a parameter:
+
+```JavaScript
+function getTime2(cont) {
+    return cont(new Date().toTimeString());
+}
+
+getTime2(console.log);
+```
+
+What's the difference?
+The key is that we can apply this mechanism to make a recursive call into a tail call because all of the code that comes after will be provided in the recursive call itself.
+
+### Trampolines and thunks
+
+A **thunk** is just a nullary function (so, with no parameters) that helps delay a computation, providing a form of **lazy evaluation**. If you have a thunk, then, unless you call it, you won't get its value.
+For example, if you want to get the current date and time in ISO format, you could get it with ```new Date().toISOString()````; however, if you provide a thunk that calculates that, you won't get the value until you actually invoke it:
+
+```JavaScript
+const getIsoDateAndTime = () => new Date().toISOString();
+
+const isoDateAndTime = getIsoDateAndTime();
+```
+
+What's the use of this?
+The problem with recursion is that a function calls itself, and calls itself, and calls itself, and so on until the stack blows over. Instead of directly calling itself, we are going to have the function return a thunk, which, when executed, will actually recursively call the function. So, instead of having the stack grow more and more, it will actually be quite flat, since the function will enver get to actually call itself; the stack will grow by one position, when you call the function, and then get back to its size, as soon as the function returns its thunk.
+
+Who gets to do the recursion ? That's where the concept of a **trampoline** comes in. A trampoline is just a loop that calls a function, gets its return, and, if it is a thunk, then it calls it so that recursion will proceed, but in a flat, linear , way ! The loop is exited when the thunk evaluation returns an actual vlaue instead of a new function.
+
+```JavaScript
+const trampoline = fn => {
+    while(typeof fn === 'function') {
+        fn = fn();
+    }
+
+    return fn;
+}
+```
+
+How can we apply this to an actual function? Let's start with a simple one that just sums all the numbers from 1 to *n*, but in a recursive, guaranteed-to-cause-stack-crash fashion. Our simple ```sumAll()``` function could just be the following:
+
+```JavaScript
+const sumAll = n => (n == 0 ? 0 :  n + sumAll(n - 1));
+```
+
+However, if we start trying this functin out, we'll eventually stumble and get a crash.
+
+The stack problem will come up sooner or later depending on your machine, your memory  size, and so on, but it will come, no doubt about that. Let's rewrite the function in continuation-passing style so that it will become tail recursive. We will just apply the same technique that we saw earlier, as shown in the following code:
+
+```JavaScript
+const sumAllC = (n, cont) =>
+    n === 0 ? cont(0) : sumAllC(n-1, v => cont(v+n));
+```
+
+Now, let's apply a simpler rule: whenver you are going to return from a call, instead return a thunk that will, when executed do the call that you actually wanted to do:
+
+```JavaScript
+const sumAllT = (n, cont) =>
+    n === 0 ? () => cont(0) : () => sumAllT(n - 1, v => () => cont(v + n));
+```
+
+Whnever there would have been a call to a function, we now return a thunk. How do we get to run this function? This is the missing detail. YOu need an initial call that will invoke ```sumAllT()``` the first time and (unless teh function was called with a zero argument) a thunk will be immediately returned. The trampoline function will call the thunk, and that will cause a new call, and so on, until we eventually get a thun kthat simply returns a value, and then the calculation will be ended:
+
+```JavaScript
+const sumAll2 = n => trampoline(sumAllT(n, x => x));
+```
+
+### Recursion elimination
+
+There's yet one other possibility that you might want to explorer, but that falls beyond the realm of FP and into algorithm design. It's a computer science fact that any algorithm that is implemen ted using recursion has an equivalent version that doesn't use recursion at all and instead depends on a stack. There are ways to systematically transform recursive algorithms into iterative ones, so, if you run out of all options ( that is, if not even continuations or thunks can help you ), then you'd have a final opportunity to achieve your goals by replacing all recursion with iteration.
