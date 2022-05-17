@@ -11,6 +11,7 @@
 ## 9. Designing Functions - Recursion
 ## 10. Ensuring Purity - Immutability
 ## 11. Implementing Design Patterns - The Functional Way
+## 12. Building Better Containers - The Functional Way
 
 ---
 
@@ -1276,3 +1277,69 @@ const sumAll2 = n => trampoline(sumAllT(n, x => x));
 ### Recursion elimination
 
 There's yet one other possibility that you might want to explorer, but that falls beyond the realm of FP and into algorithm design. It's a computer science fact that any algorithm that is implemen ted using recursion has an equivalent version that doesn't use recursion at all and instead depends on a stack. There are ways to systematically transform recursive algorithms into iterative ones, so, if you run out of all options ( that is, if not even continuations or thunks can help you ), then you'd have a final opportunity to achieve your goals by replacing all recursion with iteration.
+
+# 10. Ensuring Purity - Immutability
+
+There are several ways of ensuring impurity:
+
+* Using basic JavaScript ways
+* Using persistent data structures
+
+## Mutator Functions
+
+There are a lot of functions that are troublesome, especially when talking about arrays, since they are simply made to change objects, like:
+
+* ```copyWithing()``` lets you copy elements withing the array
+* ```fill()``` fills an array with a given value
+* ```push()``` and ```pop()``` let you add or delete elements at the end of an array
+* ```shift()``` and ```unshift()``` work in the same way as ```push()``` and ```pop()```, but at the beginning of the array.
+* ```splice()``` lets you add or delete elements anywhere within the array
+* ```reverse()``` and ```sort()``` modify the array in place, reversing its elements or ordering them.
+
+## Constants
+
+If you want to keep an object from getting changed, make it a constant. The only thing that can still change are the values within but new values can't be added.
+
+## Freezing
+
+After an object has been frozen, you won't be able to change it, however, freezing is a *shallow* operation, meaning that if the object has a property that is an object, you'll be able to change the properties of that property object.
+
+## Cloning and mutating
+
+There are several ways of cloning an object:
+
+```JavaScript
+let a = Object.assign({}, obj);
+let b = {...obj};
+let c = array.slice();
+let d = [...array];
+```
+
+They all have the *shallowness* problem.
+
+You can however make a deep copy of an object using JSON:
+
+```JavaScript
+let x = JSON.parse(JSON.stringify(obj));
+```
+
+## Lenses and Prisms
+
+```>```
+
+There's another way to get and set values, which goes by the name of *optics*, including *lenses* and *prisms*. Lenses are functional ways of *focusing* on a given spot in an object so that we can access or modify its value in a non-mutating way.
+
+Several libraries provide full implementations of lenses that are production-ready and more complete than what we saw in this chapter; for exampe, check out *Rambda*.
+
+A lense depends on having a getter and a setter for a given attribute.
+
+With lenses, there are three basic operations:
+
+* ```view()```: used to access the value of an attribute
+* ```set()```: used to modify the value of an attribute
+* ```over()```: used to apply a function to an attribute and change its value
+
+The result of ```set()``` is a new object wiith a change value. Using ```over()``` is similar in that a new object is returned, but in this case, the value is changed by applying a mapping function to it.
+
+es, as we saw in the previous section, are useful for working with *product types*. However, prisms are useful for working with *sum types*. The idea is that a product type is always built out of the same optins, such as an object from a class, while a sum type will likely ahve different structures - extra or missing attributes, for example. When you use a lens, you assume that the object that you'll be applying it to has a known structure with no variations, but what do you use if the object may have different structures ? The answer is prisms.
+
