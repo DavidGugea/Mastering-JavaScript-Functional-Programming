@@ -1343,3 +1343,33 @@ The result of ```set()``` is a new object wiith a change value. Using ```over()`
 
 es, as we saw in the previous section, are useful for working with *product types*. However, prisms are useful for working with *sum types*. The idea is that a product type is always built out of the same optins, such as an object from a class, while a sum type will likely ahve different structures - extra or missing attributes, for example. When you use a lens, you assume that the object that you'll be applying it to has a known structure with no variations, but what do you use if the object may have different structures ? The answer is prisms.
 
+
+# 12. Building Better Containers - The Functional Way
+
+## Functors
+
+Functors are functions that take a value and a function. 
+The functor is responsible for unwrapping the individual values of the value that's being passed in and then passes each of those into the function. Then it takes the processed values and creates a new structure for those values that it returns. ```map``` and ```filter``` are for example functors.
+
+Example:
+
+```JavaScript
+function stringFunctor(value, fn) {
+    var chars = value.split("");
+    return chars.map(function(char){ 
+        return String.fromCharCode(fn(char.charCodeAt(0)))
+    }).join("")
+}
+
+function plus1(value) {
+    return value + 1;
+}
+
+function minus1(value) {
+    return value - 1;
+}
+
+[3, 4].map(plus1) // returns [4, 5]
+stringFunctor("ABC", plus1); // returns "BCD"
+stringFunctor("ABC", minus1); // returns "RXY"
+```
